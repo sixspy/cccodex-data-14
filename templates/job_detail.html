@@ -4,13 +4,27 @@
 <p><a href="{{ url_for('jobs.list_jobs') }}">← 返回列表</a></p>
 <section class="card">
   <h1>{{ job.name }}</h1>
-  <p>种子 <code>{{ job.seed_path }}</code> · 状态 <span class="tag {{ job.status }}">{{ job.status }}</span></p>
+  <p>
+    编码 <code>{{ job.code }}</code> · 种子 <code>{{ job.seed_path }}</code>
+    · 状态 <span class="tag {{ job.status }}">{{ job.status }}</span>
+    · 权属 <b>{{ holder_label }}</b>
+    {% if holder %}<span class="tag shift-{{ holder.status }}">编码归{{ shift_text.get(holder.status, holder.status) }}</span>{% endif %}
+  </p>
+  {% if locked %}
+  <p class="warn">题名与追加已锁：该编码处于待接手 / 已移交状态。</p>
+  {% endif %}
   {% if job.status == 'draft' %}
   <form method="post" action="{{ url_for('jobs.run_job_view', job_id=job.id) }}">
-    <button type="submit">运行采集（同步）</button>
+    <button type="submit" {% if locked %}disabled{% endif %}>运行采集（同步）</button>
   </form>
   {% elif job.status == 'done' %}
   <p class="muted">已完成于 {{ job.finished_at or '—' }}</p>
+  {% endif %}
+  {% if not locked %}
+  <form class="grid-form" method="post" action="{{ url_for('jobs.rename_job', job_id=job.id) }}">
+    <label>题名 <input name="name" value="{{ job.name }}" required /></label>
+    <button type="submit">改题名</button>
+  </form>
   {% endif %}
 </section>
 <section class="card">

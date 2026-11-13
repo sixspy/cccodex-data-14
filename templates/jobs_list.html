@@ -1,8 +1,148 @@
 {% extends "base.html" %}
 {% block title %}任务列表{% endblock %}
 {% block body %}
+{% set view = shell.view %}
+{% set shift = view.shift %}
 <section class="card">
   <h1>采集任务</h1>
+  <p class="muted">
+    本班 <b>{{ view.label }}</b> · 建档人 {{ shift.creator }} · 当前用户 {{ shell.user }}
+    · 持有编码 {{ view.held_count }} 条
+  </p>
+  {% if view.running %}
+  <p class="warn">采集未停稳：交班入口不可见，等本轮采集结束后再交班。</p>
+  {% endif %}
+  {% if shift.status == 'active' or shift.status == 'released' %}
+  {% if not view.running %}
+  <form class="grid-form handover-form" method="post" action="{{ url_for('jobs.handover') }}">
+    <label>接班人
+      <input name="successor" placeholder="不能是建档人 {{ shift.creator }}" required />
+    </label>
+    <label>移交方式
+      <select name="mode" required>
+        {% for key, label in {'atomic': '整班原子移交'}.items() %}
+        <option value="{{ key }}">{{ label }}（当日唯一口径）</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>窗口起 <input name="window_start" placeholder="HH:MM 或 2026-11-13 09:30" required /></label>
+    <label>窗口止 <input name="window_end" placeholder="HH:MM" required /></label>
+    <button type="submit">交班</button>
+  </form>
+  {% endif %}
+  {% elif shift.status == 'pending' %}
+  <p class="warn">本班待接手：题名与追加已锁，等待 {{ shift.successor }} 在窗口
+    {{ shift.window_start }} → {{ shift.window_end }} 内接手。</p>
+  {% endif %}
+</section>
+
+{% if shift.status == 'pending' and view.handover %}
+<section class="card">
+  <h2>交接单 #{{ view.handover.id }} · {{ handover_text.get(view.handover.status, view.handover.status) }}</h2>
+  <p class="muted">
+    接班人 {{ view.handover.successor }} · 口径 {{ mode_labels.get(view.handover.mode, view.handover.mode) }}
+    · 窗口 {{ view.handover.window_start }} → {{ view.handover.window_end }}
+    · 未交清 {{ view.stuck }} 条
+  </p>
+  {% set hc = handover_codes %}
+  <div class="handover-codes">
+  <table>
+    <thead><tr><th>编码</th><th>题名</th><th>状态</th></tr></thead>
+    <tbody>
+      {% for c in hc %}
+      <tr>
+        <td><code>{{ c.code }}</code></td>
+        <td>{{ c.title }}</td>
+        <td><span class="tag code-{{ c.state }}">{{ c.state }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">无待移交编码</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if shell.user == view.handover.successor %}
+  <form method="post" action="{{ url_for('jobs.accept_handover', handover_id=view.handover.id) }}">
+    <input type="hidden" name="mode" value="{{ view.handover.mode }}" />
+    <button type="submit">接手（{{ mode_labels.get(view.handover.mode) }}）</button>
+  </form>
+  {% else %}
+  <p class="muted">当前用户不是接班人，接手按钮不可用。</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>班次账册与交接单</h2>
+  <table>
+    <thead>
+      <tr><th>班次</th><th>状态</th><th>交接单</th><th>未交清</th><th>持有</th><th>口径</th><th>建档人</th></tr>
+    </thead>
+    <tbody>
+      {% for row in shift_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td><span class="tag shift-{{ row.shift.status }}">{{ shift_text.get(row.shift.status, row.shift.status) }}</span></td>
+        <td>{{ handover_text.get(row.handover.status, row.handover.status) if row.handover else '—' }}</td>
+        <td>{{ row.stuck }}</td>
+        <td>{{ row.held_count }}</td>
+        <td>{{ row.mode_label or '—' }}</td>
+        <td>{{ row.shift.creator }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">尚无班次</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">当日口径（{{ today }}）：{{ day_mode_label }}</p>
+  {% if handovers %}
+  <h3>交接单</h3>
+  <table>
+    <thead><tr><th>#</th><th>发起班次</th><th>接班人</th><th>方式</th><th>窗口</th><th>状态</th></tr></thead>
+    <tbody>
+      {% for h in handovers %}
+      <tr>
+        <td>{{ h.id }}</td>
+        <td>第 {{ h.shift_id }} 班</td>
+        <td>{{ h.successor }}</td>
+        <td>{{ mode_labels.get(h.mode, h.mode) }}</td>
+        <td class="muted">{{ h.window_start }} → {{ h.window_end }}</td>
+        <td><span class="tag handover-{{ h.status }}">{{ handover_text.get(h.status, h.status) }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>采集编码（权属随班）</h2>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>编码</th><th>名称</th><th>种子</th><th>状态</th><th>归属班次</th><th>记录数</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for j in jobs %}
+      <tr>
+        <td>{{ j.id }}</td>
+        <td><code>{{ j.code }}</code></td>
+        <td>{{ j.name }}</td>
+        <td><code>{{ j.seed_path }}</code></td>
+        <td><span class="tag {{ j.status }}">{{ j.status }}</span></td>
+        <td>{{ shift_labels.get(j.shift_id, '—') }}</td>
+        <td>{{ counts.get(j.id, 0) }}</td>
+        <td><a href="{{ url_for('jobs.detail', job_id=j.id) }}">详情</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="muted">尚无任务，请先创建</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>创建任务</h2>
+  {% if shift.status == 'active' %}
   <form class="grid-form" method="post" action="{{ url_for('jobs.create_job') }}">
     <label>任务名 <input name="name" placeholder="例：alpha 目录首轮" required /></label>
     <label>种子路径
@@ -14,30 +154,11 @@
     </label>
     <button type="submit">创建任务</button>
   </form>
+  {% else %}
+  <p class="muted">本班待接手 / 已移交：题名与追加已锁，暂不能建档。</p>
+  {% endif %}
 </section>
-<section class="card">
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th><th>名称</th><th>种子</th><th>状态</th><th>记录数</th><th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for j in jobs %}
-      <tr>
-        <td>{{ j.id }}</td>
-        <td>{{ j.name }}</td>
-        <td><code>{{ j.seed_path }}</code></td>
-        <td><span class="tag {{ j.status }}">{{ j.status }}</span></td>
-        <td>{{ counts.get(j.id, 0) }}</td>
-        <td><a href="{{ url_for('jobs.detail', job_id=j.id) }}">详情</a></td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6" class="muted">尚无任务，请先创建</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+
 <p class="muted">Mock 站点可在新标签打开：
   <a href="{{ url_for('mock.catalog', catalog_id='alpha') }}" target="_blank">alpha</a>
   ·

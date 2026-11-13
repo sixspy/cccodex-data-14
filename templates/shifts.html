@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}班次账册{% endblock %}
+{% block body %}
+<p><a href="{{ url_for('jobs.list_jobs') }}">← 返回列表</a></p>
+<section class="card">
+  <h1>班次账册</h1>
+  <p class="muted">当日口径 {{ today }} · 编码按班分列，同一编码只会落在一班。</p>
+  <table>
+    <thead>
+      <tr><th>班次</th><th>状态</th><th>交接单</th><th>未交清</th><th>编码</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.label }}<br /><span class="muted">建档人 {{ row.shift.creator }}</span></td>
+        <td><span class="tag shift-{{ row.shift.status }}">{{ row.status_text }}</span></td>
+        <td>
+          {{ row.handover_text }}
+          {% if row.handover %}
+          <br /><span class="muted">接班人 {{ row.handover.successor }}
+            · {{ mode_labels.get(row.handover.mode, row.handover.mode) }}
+            · 窗口 {{ row.handover.window_start }} → {{ row.handover.window_end }}</span>
+          {% endif %}
+          {% if row.reason_text %}<br /><span class="muted">{{ row.reason_text }}</span>{% endif %}
+        </td>
+        <td>{{ row.stuck }}</td>
+        <td>
+          {% for c in row.codes %}
+          <code class="chip">{{ c.code }}</code>
+          {% else %}
+          <span class="muted">—</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

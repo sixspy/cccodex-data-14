@@ -14,16 +14,19 @@ body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); col
   border-bottom: 1px solid #2a3545;
 }
 .topbar .logout { margin-left: auto; display: flex; gap: 0.5rem; align-items: center; }
-.content { max-width: 960px; margin: 1.5rem auto; padding: 0 1rem; }
+.content { max-width: 1080px; margin: 1.5rem auto; padding: 0 1rem; }
 .card { background: var(--card); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
 .card.narrow { max-width: 360px; }
 .muted { color: var(--muted); font-size: 0.9rem; }
+.warn { color: #ffd38a; font-size: 0.9rem; }
 label { display: block; margin-bottom: 0.75rem; }
 input, select, button { font: inherit; padding: 0.45rem 0.6rem; border-radius: 4px; border: 1px solid #3a4556; background: #0f1419; color: var(--text); }
 button { background: var(--accent); border-color: var(--accent); cursor: pointer; }
+button[disabled] { background: #3a4556; border-color: #3a4556; cursor: not-allowed; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #2a3545; }
 code { font-size: 0.85em; }
+.chip { display: inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.1rem 0.4rem; background: #0f1419; border-radius: 4px; }
 .tag { padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.8rem; background: #2a3545; }
 .tag.done { background: #1e4d3a; color: #9fe0c0; }
 .tag.draft { background: #3a4556; }
@@ -32,4 +35,34 @@ code { font-size: 0.85em; }
 .flash .ok { color: var(--ok); }
 .flash .error { color: var(--err); }
 .grid-form { display: grid; gap: 0.75rem; grid-template-columns: 1fr 1fr auto; align-items: end; }
-@media (max-width: 720px) { .grid-form { grid-template-columns: 1fr; } }
+.handover-form { grid-template-columns: 1fr 1fr 1fr 1fr auto; }
+@media (max-width: 820px) { .grid-form, .handover-form { grid-template-columns: 1fr; } }
+
+/* 顶栏权属：四种状态可区分 */
+.ownership {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #3a4556;
+}
+.ownership.status-active { border-color: var(--ok); }
+.ownership.status-pending { border-color: #d99b2b; background: #3a2f16; }
+.ownership.status-transferred { border-color: var(--accent); }
+.ownership.status-released { border-color: #8b96a8; background: #2a2f38; }
+
+.tag.shift-active { background: #1e4d3a; color: #9fe0c0; }
+.tag.shift-pending { background: #3a2f16; color: #ffd38a; }
+.tag.shift-transferred { background: #17304f; color: #9cc3ff; }
+.tag.shift-released { background: #2a2f38; color: #b9c2d0; }
+.tag.shift-ledger { background: #2a3545; }
+.tag.handover-pending { background: #3a2f16; color: #ffd38a; }
+.tag.handover-accepted { background: #1e4d3a; color: #9fe0c0; }
+.tag.handover-void { background: #2a2f38; }
+.tag.handover-partial { background: #5a2a2a; color: #ffb3b3; }
+.tag.code-pending { background: #3a2f16; color: #ffd38a; }
+.tag.code-moved { background: #1e4d3a; color: #9fe0c0; }
+.tag.code-stuck { background: #5a2a2a; color: #ffb3b3; }
+
+.topbar .switch { margin-left: auto; display: flex; gap: 0.5rem; align-items: center; }
+.topbar .switch .inline { display: flex; align-items: center; gap: 0.35rem; margin: 0; }
+.topbar .switch + .logout { margin-left: 0; }
+.topbar .switch select { padding: 0.25rem 0.4rem; }
+.prev-shift { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }

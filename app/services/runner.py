@@ -15,6 +15,11 @@ def run_job(job_id: int) -> dict:
     ).fetchone()
     if job is None:
         raise ValueError("job not found")
+    if job["shift_id"] is not None and db.execute(
+        "SELECT 1 FROM shifts WHERE id = ? AND status IN ('pending', 'transferred')",
+        (job["shift_id"],),
+    ).fetchone():
+        raise ValueError("该编码已锁定：待接手或已移交，不能追加")
     if job["status"] == "running":
         raise ValueError("job already running")
     if job["status"] == "done":

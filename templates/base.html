@@ -11,7 +11,35 @@
   <header class="topbar">
     <strong>Crawl Lab</strong>
     <span class="muted">数据工程基线 · 采集任务编排</span>
+    {% if shell and shell.user %}
+    <span class="ownership status-{{ shell.status }}" data-shift-status="{{ shell.status }}">
+      <b>{{ shell.status_text }}</b>
+      <span class="muted">{{ shell.line }}</span>
+      {% if shell.handover %}
+      <span class="tag handover-{{ shell.handover.status }}">交接单：{{ shell.handover_text }}</span>
+      {% endif %}
+    </span>
+    {% if shell.prev %}
+    <span class="prev-shift muted" data-prev-handover="{{ shell.prev.id }}"
+          data-prev-shift-status="{{ shell.prev.from_status }}">
+      <span class="tag shift-{{ shell.prev.from_status }}">{{ shell.shift_text.get(shell.prev.from_status, shell.prev.from_status) }}</span>
+      第 {{ shell.prev.shift_id }} 班 → 第 {{ shell.prev.to_shift_id }} 班
+      · {{ shell.prev.to_label }} 已在班
+    </span>
+    {% endif %}
+    {% endif %}
     {% if session.get('user') %}
+    <form class="switch" method="post" action="{{ url_for('auth.switch') }}">
+      <input type="hidden" name="next" value="{{ request.full_path }}" />
+      <label class="inline">演示切号
+        <select name="username" onchange="this.form.submit()">
+          {% for u in ['admin', 'alice', 'bob'] %}
+          <option value="{{ u }}" {% if session.user == u %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button type="submit">切换</button></noscript>
+    </form>
     <form class="logout" method="post" action="{{ url_for('auth.logout') }}">
       <span>{{ session.user }}</span>
       <button type="submit">退出</button>
